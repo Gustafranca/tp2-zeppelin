@@ -35,6 +35,10 @@ uniform bool u_luzLigada;
 uniform bool u_hasTexture;
 uniform sampler2D u_texture;
 
+// NOVAS VARIÁVEIS PARA O CICLO DIA/NOITE
+uniform float u_ambientIntensity;
+uniform float u_lightIntensity;
+
 out vec4 outColor;
 
 void main() {
@@ -46,18 +50,24 @@ void main() {
     if (u_luzLigada) {
         vec3 normal = normalize(v_normal);
         vec3 surfaceToViewDirection = normalize(v_surfaceToView);
-        float luzAmbiente = 0.3; 
+        
+        // A luz ambiente agora é controlada pelo JavaScript
+        float luzAmbiente = u_ambientIntensity; 
+        
         vec3 lightDir = normalize(u_lightDirection);
         float light = dot(normal, lightDir);
-        float luzDifusa = max(light, 0.0);
+        
+        // A intensidade difusa e especular multiplica pela força do sol
+        float luzDifusa = max(light, 0.0) * u_lightIntensity;
 
         float luzEspecular = 0.0;
         if (luzDifusa > 0.0) {
             float shininess = 50.0; 
             vec3 reflectDir = reflect(-lightDir, normal);
             float specAngle = max(dot(reflectDir, surfaceToViewDirection), 0.0);
-            luzEspecular = pow(specAngle, shininess);
+            luzEspecular = pow(specAngle, shininess) * u_lightIntensity;
         }
+        
         vec3 finalColor = baseColor.rgb * (luzAmbiente + luzDifusa) + luzEspecular;
         outColor = vec4(finalColor, baseColor.a);
     } else {
@@ -81,8 +91,14 @@ export const skyboxFs = `#version 300 es
 precision highp float;
 in vec3 v_texcoord;
 uniform samplerCube u_skybox;
+
+// NOVA VARIÁVEL: Tonalidade do céu
+uniform vec3 u_skyTint;
+
 out vec4 outColor;
 void main() {
-    outColor = texture(u_skybox, normalize(v_texcoord));
+    vec4 texColor = texture(u_skybox, normalize(v_texcoord));
+    // Multiplicamos as nuvens pela cor ambiente (Laranja no pôr do sol, Escuro à noite)
+    outColor = vec4(texColor.rgb * u_skyTint, texColor.a);
 }
 `;

@@ -8,7 +8,8 @@ export function criarNo() {
     };
 }
 
-export function desenharNohEFilhos(gl, no, viewProjectionMatrix, programInfo, cameraPosition, direcaoLuz, luzEstado) {
+// ATENÇÃO ÀS DUAS NOVAS VARIÁVEIS NO FIM DOS PARÂMETROS
+export function desenharNohEFilhos(gl, no, viewProjectionMatrix, programInfo, cameraPosition, direcaoLuz, luzEstado, ambientIntensity, lightIntensity) {
     const matrixFinal = twgl.m4.multiply(viewProjectionMatrix, no.worldMatrix);
     const worldInverseTranspose = twgl.m4.transpose(twgl.m4.inverse(no.worldMatrix));
 
@@ -20,7 +21,9 @@ export function desenharNohEFilhos(gl, no, viewProjectionMatrix, programInfo, ca
         u_viewWorldPosition: cameraPosition,
         u_lightDirection: direcaoLuz,
         u_luzLigada: luzEstado,
-        u_hasTexture: no.uniforms.u_hasTexture
+        u_hasTexture: no.uniforms.u_hasTexture,
+        u_ambientIntensity: ambientIntensity, // Enviado para o Shader
+        u_lightIntensity: lightIntensity      // Enviado para o Shader
     };
     
     if (no.uniforms.u_hasTexture) {
@@ -32,7 +35,8 @@ export function desenharNohEFilhos(gl, no, viewProjectionMatrix, programInfo, ca
     twgl.drawBufferInfo(gl, no.bufferInfo);
 
     no.filhos.forEach(filho => {
-        desenharNohEFilhos(gl, filho, viewProjectionMatrix, programInfo, cameraPosition, direcaoLuz, luzEstado);
+        // A função é recursiva, por isso temos de passar os parâmetros também aqui para os filhos!
+        desenharNohEFilhos(gl, filho, viewProjectionMatrix, programInfo, cameraPosition, direcaoLuz, luzEstado, ambientIntensity, lightIntensity);
     });
 }
 
