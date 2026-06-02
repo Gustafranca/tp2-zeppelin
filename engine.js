@@ -4,11 +4,18 @@ export function criarNo() {
         worldMatrix: twgl.m4.identity(),
         filhos: [],
         bufferInfo: null,
-        uniforms: { u_color: [1, 1, 1, 1], u_hasTexture: false, u_texture: null }
+        uniforms: { 
+            u_color: [1, 1, 1, 1], 
+            u_hasTexture: false, 
+            u_texture: null,
+            u_uvScale: 1.0,
+            u_useHeightmap: false, // NOVO
+            u_heightmap: null,     // NOVO
+            u_heightScale: 0.0     // NOVO
+        }
     };
 }
 
-// ATENÇÃO ÀS DUAS NOVAS VARIÁVEIS NO FIM DOS PARÂMETROS
 export function desenharNohEFilhos(gl, no, viewProjectionMatrix, programInfo, cameraPosition, direcaoLuz, luzEstado, ambientIntensity, lightIntensity) {
     const matrixFinal = twgl.m4.multiply(viewProjectionMatrix, no.worldMatrix);
     const worldInverseTranspose = twgl.m4.transpose(twgl.m4.inverse(no.worldMatrix));
@@ -22,20 +29,21 @@ export function desenharNohEFilhos(gl, no, viewProjectionMatrix, programInfo, ca
         u_lightDirection: direcaoLuz,
         u_luzLigada: luzEstado,
         u_hasTexture: no.uniforms.u_hasTexture,
-        u_ambientIntensity: ambientIntensity, // Enviado para o Shader
-        u_lightIntensity: lightIntensity      // Enviado para o Shader
+        u_ambientIntensity: ambientIntensity,
+        u_lightIntensity: lightIntensity,
+        u_uvScale: no.uniforms.u_uvScale !== undefined ? no.uniforms.u_uvScale : 1.0,
+        u_useHeightmap: no.uniforms.u_useHeightmap !== undefined ? no.uniforms.u_useHeightmap : false,
+        u_heightScale: no.uniforms.u_heightScale || 0.0
     };
     
-    if (no.uniforms.u_hasTexture) {
-        uniformsAEnviar.u_texture = no.uniforms.u_texture;
-    }
+    if (no.uniforms.u_hasTexture) uniformsAEnviar.u_texture = no.uniforms.u_texture;
+    if (no.uniforms.u_useHeightmap) uniformsAEnviar.u_heightmap = no.uniforms.u_heightmap;
 
     twgl.setUniforms(programInfo, uniformsAEnviar);
     twgl.setBuffersAndAttributes(gl, programInfo, no.bufferInfo);
     twgl.drawBufferInfo(gl, no.bufferInfo);
 
     no.filhos.forEach(filho => {
-        // A função é recursiva, por isso temos de passar os parâmetros também aqui para os filhos!
         desenharNohEFilhos(gl, filho, viewProjectionMatrix, programInfo, cameraPosition, direcaoLuz, luzEstado, ambientIntensity, lightIntensity);
     });
 }

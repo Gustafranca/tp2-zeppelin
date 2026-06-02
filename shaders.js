@@ -6,19 +6,39 @@ in vec2 texcoord;
 uniform mat4 u_matrix;
 uniform mat4 u_world;
 uniform mat4 u_worldInverseTranspose;
+uniform float u_uvScale; 
+
+// VARIÁVEIS DO HEIGHTMAP
+uniform bool u_useHeightmap;
+uniform sampler2D u_heightmap;
+uniform float u_heightScale;
 
 out vec3 v_normal;
 out vec3 v_surfaceToView;
 out vec2 v_texcoord; 
+out vec3 v_worldPosition; // Passamos a posição real para o Fragment Shader
 
 uniform vec3 u_viewWorldPosition;
 
 void main() {
-    gl_Position = u_matrix * position;
+    vec4 pos = position;
+    
+    // Se for o terreno, levanta os vértices com base no pixel da imagem
+    if (u_useHeightmap) {
+        // Usa a texcoord original (0.0 a 1.0) para ler o mapa de altura
+        float h = texture(u_heightmap, texcoord).r;
+        pos.y += h * u_heightScale;
+    }
+
+    gl_Position = u_matrix * pos;
+    v_worldPosition = (u_world * pos).xyz;
+    
     v_normal = mat3(u_worldInverseTranspose) * normal;
-    vec3 surfaceWorldPosition = (u_world * position).xyz;
+    vec3 surfaceWorldPosition = (u_world * pos).xyz;
     v_surfaceToView = u_viewWorldPosition - surfaceWorldPosition;
-    v_texcoord = texcoord;
+    
+    // Multiplica para criar o mosaico (Tile) da grama, sem estragar o Heightmap
+    v_texcoord = texcoord * u_uvScale; 
 }
 `;
 
@@ -28,14 +48,14 @@ precision highp float;
 in vec3 v_normal;
 in vec3 v_surfaceToView;
 in vec2 v_texcoord; 
+in vec3 v_worldPosition;
 
 uniform vec4 u_color;
 uniform vec3 u_lightDirection;
 uniform bool u_luzLigada; 
 uniform bool u_hasTexture;
 uniform sampler2D u_texture;
-
-// NOVAS VARIÁVEIS PARA O CICLO DIA/NOITE
+uniform bool u_useHeightmap;
 uniform float u_ambientIntensity;
 uniform float u_lightIntensity;
 
@@ -49,15 +69,20 @@ void main() {
 
     if (u_luzLigada) {
         vec3 normal = normalize(v_normal);
+        
+        // RECÁLCULO DINÂMICO DE LUZ PARA AS MONTANHAS
+        if (u_useHeightmap) {
+            vec3 dx = dFdx(v_worldPosition);
+            vec3 dy = dFdy(v_worldPosition);
+            normal = normalize(cross(dx, dy));
+            // Garante que a sombra não inverta de pernas para o ar
+            if (normal.y < 0.0) normal = -normal; 
+        }
+
         vec3 surfaceToViewDirection = normalize(v_surfaceToView);
-        
-        // A luz ambiente agora é controlada pelo JavaScript
         float luzAmbiente = u_ambientIntensity; 
-        
         vec3 lightDir = normalize(u_lightDirection);
         float light = dot(normal, lightDir);
-        
-        // A intensidade difusa e especular multiplica pela força do sol
         float luzDifusa = max(light, 0.0) * u_lightIntensity;
 
         float luzEspecular = 0.0;
@@ -91,14 +116,10 @@ export const skyboxFs = `#version 300 es
 precision highp float;
 in vec3 v_texcoord;
 uniform samplerCube u_skybox;
-
-// NOVA VARIÁVEL: Tonalidade do céu
 uniform vec3 u_skyTint;
-
 out vec4 outColor;
 void main() {
     vec4 texColor = texture(u_skybox, normalize(v_texcoord));
-    // Multiplicamos as nuvens pela cor ambiente (Laranja no pôr do sol, Escuro à noite)
     outColor = vec4(texColor.rgb * u_skyTint, texColor.a);
 }
 `;

@@ -24,7 +24,18 @@ export function construirZeppelin(geometrias) {
 export function construirMundo(geometrias, texturasMapa) {
     const chao = criarNo();
     chao.bufferInfo = geometrias.chao;
-    chao.uniforms.u_color = [0.2, 0.6, 0.2, 1.0]; 
+    chao.uniforms.u_hasTexture = true;
+    chao.uniforms.u_texture = texturasMapa.grass;
+    chao.uniforms.u_uvScale = 400.0;
+    chao.uniforms.u_color = [1, 1, 1, 1];
+
+
+    // Heightmap
+    chao.uniforms.u_useHeightmap = true;
+    chao.uniforms.u_heightmap = texturasMapa.heightmap;
+    chao.uniforms.u_heightScale = 150.0; 
+
+
     chao.localMatrix = twgl.m4.translation([0, 0, 0]);
 
     const predios = [];
