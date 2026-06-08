@@ -71,4 +71,8 @@ Simulação 3D em **WebGL 2** de um zeppelin sobrevoando uma cidade procedural. 
 ### Gráficos
 
 - **Ciclo dia/noite** — sol animado, variação de intensidade luminosa, céu com tons de pôr do sol e noite, postes acendem à noite
+
 - **Câmera extra** — câmera livre controlada pelo mouse (além das 3 exigidas no roteiro)
+
+### LINK YOUTUBE
+https://youtu.be/a4ZTTJiGyFM
