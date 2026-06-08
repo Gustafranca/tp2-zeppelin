@@ -16,16 +16,14 @@ uniform float u_heightScale;
 out vec3 v_normal;
 out vec3 v_surfaceToView;
 out vec2 v_texcoord; 
-out vec3 v_worldPosition; // Passamos a posição real para o Fragment Shader
+out vec3 v_worldPosition; 
 
 uniform vec3 u_viewWorldPosition;
 
 void main() {
     vec4 pos = position;
     
-    // Se for o terreno, levanta os vértices com base no pixel da imagem
     if (u_useHeightmap) {
-        // Usa a texcoord original (0.0 a 1.0) para ler o mapa de altura
         float h = texture(u_heightmap, texcoord).r;
         pos.y += h * u_heightScale;
     }
@@ -37,7 +35,6 @@ void main() {
     vec3 surfaceWorldPosition = (u_world * pos).xyz;
     v_surfaceToView = u_viewWorldPosition - surfaceWorldPosition;
     
-    // Multiplica para criar o mosaico (Tile) da grama, sem estragar o Heightmap
     v_texcoord = texcoord * u_uvScale; 
 }
 `;
@@ -59,6 +56,10 @@ uniform bool u_useHeightmap;
 uniform float u_ambientIntensity;
 uniform float u_lightIntensity;
 
+// NOVAS VARIÁVEIS PARA OS POSTES DE LUZ
+uniform bool u_isLamp;
+uniform float u_nightFactor;
+
 out vec4 outColor;
 
 void main() {
@@ -70,12 +71,10 @@ void main() {
     if (u_luzLigada) {
         vec3 normal = normalize(v_normal);
         
-        // RECÁLCULO DINÂMICO DE LUZ PARA AS MONTANHAS
         if (u_useHeightmap) {
             vec3 dx = dFdx(v_worldPosition);
             vec3 dy = dFdy(v_worldPosition);
             normal = normalize(cross(dx, dy));
-            // Garante que a sombra não inverta de pernas para o ar
             if (normal.y < 0.0) normal = -normal; 
         }
 
@@ -94,6 +93,12 @@ void main() {
         }
         
         vec3 finalColor = baseColor.rgb * (luzAmbiente + luzDifusa) + luzEspecular;
+        
+        // MAGIA DO POSTE: Adiciona uma emissão de luz amarela/laranja proporcional ao cair da noite
+        if (u_isLamp) {
+            finalColor += vec3(1.0, 0.8, 0.3) * u_nightFactor;
+        }
+
         outColor = vec4(finalColor, baseColor.a);
     } else {
         outColor = baseColor;

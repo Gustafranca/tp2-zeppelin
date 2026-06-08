@@ -1,0 +1,24 @@
+70% 
+Obrigatórios
+Mundo - 3 tipos de prédio distribuidos uniformente
+	1 tipo de carro com varias variações
+	Textura Aslfalto e alsfalto para cruzamento
+	Zeppelin hierárquico
+
+Câmera 
+	3 tipos de câmera as obrigatórias e uma controlada pelo mouse (era mais fácil de observar o desenvolvimento do jogo)
+
+Gráficos 
+	Iluminação
+
+
+Extras
+Mundo
+	Relevo usando textura (heigh map)
+	Skybox
+	Modelos em formato .obj (carros)
+	Objetos animados (carros)
+
+Gráficos
+	Dia/Noite
+	Câmera extra (não é a pedida no roteiro mas existe)

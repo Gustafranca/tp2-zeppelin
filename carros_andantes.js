@@ -1,4 +1,7 @@
 export function calcularRotaAleatoria(grafo, noOrigem) {
+    // Essa função calcula um caminho entre dois pontos da malha viária da cidade. 
+    // O destino é escolhido ao acaso; o caminho em si é o menor número de ruas possíveis.
+    // BFS — Breadth-First Search
     const noDestino = grafo[Math.floor(Math.random() * grafo.length)];
     if (noOrigem === noDestino) return [noOrigem];
 

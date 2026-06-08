@@ -4,23 +4,32 @@ import { calcularRotaAleatoria } from './carros_andantes.js';
 export const tamanhoCidade = 800;
 export const tamanhoLote = 6;
 
+// construir zeppelin hierarquivo em partes: chassi, balao, cabine, helice, leme
 export function construirZeppelin(geometrias) {
-    const chassi = criarNo();
-    chassi.bufferInfo = geometrias.cubo; 
-    chassi.uniforms.u_color = [0.8, 0.8, 0.8, 1.0]; 
+    const chassi = criarNo(); 
+
+    const balao = criarNo();
+    balao.bufferInfo = geometrias.esfera; 
+    balao.uniforms.u_color = [0.85, 0.85, 0.9, 1.0]; 
 
     const cabine = criarNo();
-    cabine.bufferInfo = geometrias.esfera; 
-    cabine.uniforms.u_color = [0.2, 0.2, 0.8, 0.5]; 
+    cabine.bufferInfo = geometrias.cubo; 
+    cabine.uniforms.u_color = [0.3, 0.8, 1.0, 0.4]; 
 
     const helice = criarNo();
     helice.bufferInfo = geometrias.cilindro;
-    helice.uniforms.u_color = [0.1, 0.1, 0.1, 1.0]; 
+    helice.uniforms.u_color = [0.2, 0.2, 0.2, 1.0]; 
 
-    chassi.filhos.push(cabine, helice);
-    return { chassi, cabine, helice };
+    const leme = criarNo(); 
+    leme.bufferInfo = geometrias.cubo;
+    leme.uniforms.u_color = [0.8, 0.1, 0.1, 1.0]; 
+
+    chassi.filhos.push(balao, cabine, helice, leme);
+    
+    return { chassi, balao, cabine, helice, leme }; 
 }
 
+// construir mundo: chao, predios, nosDaRua
 export function construirMundo(geometrias, texturasMapa) {
     const chao = criarNo();
     chao.bufferInfo = geometrias.chao;
@@ -29,26 +38,22 @@ export function construirMundo(geometrias, texturasMapa) {
     chao.uniforms.u_uvScale = 400.0;
     chao.uniforms.u_color = [1, 1, 1, 1];
 
-
-    // Heightmap
     chao.uniforms.u_useHeightmap = true;
     chao.uniforms.u_heightmap = texturasMapa.heightmap;
     chao.uniforms.u_heightScale = 150.0; 
-
 
     chao.localMatrix = twgl.m4.translation([0, 0, 0]);
 
     const predios = [];
     const nosDaRua = []; 
     const mapaCoordenadasRua = new Map();
-    // Cidade é um grid de linhas e colunas de tamanhoLote
+    //matriz de coordenadas da rua
     for (let x = -tamanhoCidade/2 + 10; x < tamanhoCidade/2 - 10; x += tamanhoLote) {
         for (let z = -tamanhoCidade/2 + 10; z < tamanhoCidade/2 - 10; z += tamanhoLote) {
             
             let isRoadX = Math.abs(x) % 30 < tamanhoLote;
             let isRoadZ = Math.abs(z) % 30 < tamanhoLote;
 
-            // Ruas e Cruzamentos
             if (isRoadX || isRoadZ) {
                 const rua = criarNo();
                 rua.bufferInfo = geometrias.lote;
@@ -57,6 +62,35 @@ export function construirMundo(geometrias, texturasMapa) {
                 
                 if (isRoadX && isRoadZ) {
                     rua.uniforms.u_texture = (Math.random() > 0.5) ? texturasMapa.cruzamento1 : texturasMapa.cruzamento2; 
+                    // LÓGICA DE GERAÇÃO DOS POSTES (1 a cada 2 esquinas)
+                    if (x % 30 === 0 && z % 30 === 0) {
+                        let cornerIdxX = Math.round(x / 30);
+                        let cornerIdxZ = Math.round(z / 30);
+                        
+                        //Pula um cruzamento sim, um não
+                        if ((cornerIdxX + cornerIdxZ) % 2 === 0) {
+                            const poste = criarNo();
+                            
+                            // Se carregou o OBJ usa ele, senão usa um cilindro como fallback
+                            poste.bufferInfo = geometrias.poste || geometrias.cilindro;
+                            poste.uniforms.u_color = [0.3, 0.3, 0.35, 1.0]; // Cinza metálico
+                            poste.uniforms.u_isLamp = true; // Aciona o brilho no Shader (não consegui fazer bright spot)
+                            
+                            // Posiciona na beirada da rua (offset 4.0 do centro)
+                            let matriz = twgl.m4.translation([x + 4.0, 0, z + 4.0]);
+                            
+                            // Se for fallback, precisamos deixar o cilindro alto e fino
+                            if (!geometrias.poste) {
+                                matriz = twgl.m4.translate(matriz, [0, 2.0, 0]);
+                                matriz = twgl.m4.scale(matriz, [0.15, 4.0, 0.15]);
+                            }
+
+                            poste.localMatrix = matriz;
+                            poste.worldMatrix = poste.localMatrix;
+                            predios.push(poste);
+                        }
+                    }
+
                 } else {
                     rua.uniforms.u_texture = texturasMapa.asphalt; 
                     if (!isRoadX) rua.localMatrix = twgl.m4.rotationY(Math.PI / 2);
@@ -93,7 +127,6 @@ export function construirMundo(geometrias, texturasMapa) {
         }
     }
 
-    // Liga as Arestas do Grafo
     nosDaRua.forEach(no => {
         const vizinhosPossiveis = [
             mapaCoordenadasRua.get(`${no.x + tamanhoLote},${no.z}`), 
@@ -111,6 +144,8 @@ export function construirMundo(geometrias, texturasMapa) {
 
 export function construirFrota(geometrias, nosDaRua, quantidadeCarros) {
     const frota = [];
+    // paleta de cores para os carros 
+    // os obejtos no blender já tinham cores, mas não consegui usar. Até por isso tem 5 tipos de carros, mas não são usados.
     const paletaDeCores = [
         [0.8, 0.1, 0.1, 1.0], [0.1, 0.2, 0.8, 1.0], 
         [0.9, 0.8, 0.1, 1.0], [0.9, 0.9, 0.9, 1.0], 
@@ -119,7 +154,16 @@ export function construirFrota(geometrias, nosDaRua, quantidadeCarros) {
 
     for(let i = 0; i < quantidadeCarros; i++) {
         const carro = criarNo();
-        carro.bufferInfo = geometrias.cubo;
+        
+        if (geometrias.carrosBlender && geometrias.carrosBlender.length > 0) {
+            const idx = Math.floor(Math.random() * geometrias.carrosBlender.length);
+            carro.bufferInfo = geometrias.carrosBlender[idx];
+            carro.isBlender = true;
+        } else {
+            carro.bufferInfo = geometrias.cubo;
+            carro.isBlender = false;
+        }
+        
         carro.uniforms.u_color = paletaDeCores[Math.floor(Math.random() * paletaDeCores.length)];
         carro.uniforms.u_hasTexture = false;
 
